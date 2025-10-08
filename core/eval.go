@@ -1,8 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -127,4 +129,22 @@ func Eval(cmd *Cmd) ([]byte, error) {
 		return evalEXPIRE(cmd)
 	}
 	return Encode("#{cmd.Cmd} Unknown", true), nil
+}
+
+func EvalAndRespond(cmds Cmds, c io.ReadWriter) {
+	var response []byte
+	buf := bytes.NewBuffer(response)
+	for _, cmd := range cmds {
+		output, err := Eval(cmd)
+		var errWrite error
+		if err != nil {
+			buf.Write(EncodeError(err))
+		} else {
+			buf.Write(output)
+		}
+		if errWrite != nil {
+			log.Println("err:% write", err)
+		}
+	}
+	c.Write(buf.Bytes())
 }

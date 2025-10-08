@@ -2,6 +2,7 @@ package core
 
 import (
 	"log"
+	"redis-clone/config"
 	"time"
 )
 
@@ -35,6 +36,9 @@ func NewValue(value interface{}, expiry int64) *Value {
 	return val
 }
 func Put(key string, val *Value) {
+	if len(store) > config.KeysLimit {
+		evictMethod()
+	}
 	store[key] = val
 }
 

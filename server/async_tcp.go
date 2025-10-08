@@ -94,21 +94,12 @@ func eventLoop(socket *Socket, kfd int) {
 				//if the i/o is from any other socket/fd rather than our server socket/fd
 				//just perform read and write
 				c := &FDcomm{Fd: fd}
-				cmd, err := readCommand(c)
+				cmds, err := readCommands(c)
 				if err != nil {
 					syscall.Close(int(fd))
 					continue
 				}
-				output, err := core.Eval(cmd)
-				var errWrite error
-				if err != nil {
-					errWrite = writeErrorCommand(c, err)
-				} else {
-					errWrite = writeCommand(c, output)
-				}
-				if errWrite != nil {
-					log.Println("err:% write", err)
-				}
+				core.EvalAndRespond(cmds, c)
 			}
 		}
 	}

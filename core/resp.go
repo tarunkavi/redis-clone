@@ -9,7 +9,11 @@ import (
 var RESPNIL = []byte("$-1\r\n")
 
 func DecodeAll(data []byte) (interface{}, int, error) {
+	if len(data) == 0 {
+		return nil, 0, errors.New("no data")
+	}
 
+	log.Println(string(data))
 	switch data[0] {
 	case '+':
 		return readSimpleString(data)
@@ -25,7 +29,7 @@ func DecodeAll(data []byte) (interface{}, int, error) {
 		// 	// 	return nil, errors.New("unknown RESP type")
 	}
 
-	return nil, -1, nil
+	return nil, 0, nil
 
 }
 
@@ -93,27 +97,36 @@ func readArrays(data []byte) ([]interface{}, int, error) {
 	}
 	return arrayOutput, pos, nil
 }
-func Decode(data []byte) (interface{}, error) {
+func Decode(data []byte) ([]interface{}, error) {
 	if len(data) == 0 {
 		return nil, errors.New("empty data stream")
 	}
 	log.Println(string(data))
-	output, _, err := DecodeAll(data)
+	var values []interface{} = make([]interface{}, 0)
+	var index int = 0
+	for index < len(data) {
+		value, delta, err := DecodeAll(data[index:])
+		if err != nil {
+			return values, err
+		}
+		if delta == 0 {
+			return values, nil
+		}
+		index = index + delta
+		values = append(values, value)
 
-	return output, err
+	}
+
+	return values, nil
 
 }
-func DecodeArrayString(data []byte) ([]string, error) {
-	output, err := Decode(data)
-	if err != nil {
-		return nil, err
-	}
+func DecodeArrayString(output interface{}) ([]string, error) {
 	ts := output.([]interface{})
 	tokens := make([]string, 0)
 	for _, v := range ts {
 		tokens = append(tokens, v.(string))
 	}
-	return tokens, err
+	return tokens, nil
 }
 
 func EncodeError(data error) []byte {

@@ -23,7 +23,7 @@ func RunSyncTcpServer() {
 		}
 
 		for {
-			Command, err := readCommand(conn)
+			commands, err := readCommands(conn)
 			// conn.Read()
 			if err != nil {
 				conn.Close()
@@ -32,21 +32,10 @@ func RunSyncTcpServer() {
 				}
 				log.Println("client_disconnnected")
 			}
-			fmt.Println("OUTPUT", Command)
+			fmt.Println("OUTPUT", commands)
 			//Eval the command
 			//write the output
-			output, err := core.Eval(Command)
-			log.Println(output)
-			var errWrite error
-			if err != nil {
-				errWrite = writeErrorCommand(conn, err)
-			} else {
-				errWrite = writeCommand(conn, output)
-			}
-			if errWrite != nil {
-				log.Println("err:% write", err)
-			}
-
+			core.EvalAndRespond(commands, conn)
 		}
 
 	}
