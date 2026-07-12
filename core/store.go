@@ -29,6 +29,8 @@ func Put(key string, val *RedisObject) {
 		evictMethod()
 	}
 	store[key] = val
+
+	KeySpaceStat[0]["keys"]++
 }
 
 func Get(key string) *RedisObject {
@@ -51,6 +53,7 @@ func Get(key string) *RedisObject {
 func Del(key string) bool {
 	if store[key] != nil {
 		delete(store, key)
+		KeySpaceStat[0]["keys"]--
 		return true
 	}
 	return false

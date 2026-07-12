@@ -30,9 +30,9 @@ func evalSET(cmd *Cmd) ([]byte, error) {
 		return nil, errors.New("ERR Wrong number of arguments for SET command")
 	}
 	key, value := cmd.Args[0], cmd.Args[1]
-	enc := getValueEncoding(value)
-	//when type keeps changing then can include that logic insidde get ValueEncofing
-	val := NewValue(value, -1, OBJ_TYPE_STRING, enc)
+	oType, enc := getTypeEncoding(value)
+	//when type keeps changing then can include that logic insidde getTypeEncoding
+	val := NewValue(value, -1, oType, enc)
 	for i := 2; i < len(cmd.Args); i++ {
 		switch cmd.Args[i] {
 		case "EX", "ex":
@@ -144,6 +144,27 @@ func evalINCR(cmd *Cmd) ([]byte, error) {
 	return Encode(valInt, false), nil
 }
 
+func evalINFO() ([]byte, error) {
+	var b []byte
+
+	buff := bytes.NewBuffer(b)
+
+	buff.WriteString("# Keyspace\r\n")
+
+	for index, metrics := range KeySpaceStat {
+		buff.WriteString(fmt.Sprintf("db%d:keys=%d,expires=%d,avg_ttl=0\r\n", index, metrics["keys"], metrics["expires"]))
+	}
+
+	return Encode(buff.String(), false), nil
+}
+
+// LATENCY LATEST / HISTOGRAM are probed by redis_exporter. Real Redis replies
+// with an array; redigo's redis.Values() requires that, so we return an empty
+// array (*0\r\n) since this clone tracks no latency data.
+func evalLATENCY() ([]byte, error) {
+	return Encode([]string{}, false), nil
+}
+
 func Eval(cmd *Cmd) ([]byte, error) {
 	switch strings.ToUpper(cmd.Cmd) {
 	case "PING":
@@ -162,6 +183,10 @@ func Eval(cmd *Cmd) ([]byte, error) {
 		return evalEXPIRE(cmd)
 	case "BGREWRITEAOF":
 		return evalBGREWRITEAOF()
+	case "INFO":
+		return evalINFO()
+	case "LATENCY":
+		return evalLATENCY()
 	}
 	return Encode("#{cmd.Cmd} Unknown", true), nil
 }

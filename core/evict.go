@@ -6,14 +6,27 @@ import "redis-clone/config"
 func evictFirst() {
 	//evict the
 	for k := range store {
-		delete(store, k)
+		Del(k)
 		return
+	}
+}
+
+func evictRandom() {
+	evictNumber := float64(config.KeysLimit) * config.EvictionRatio
+	for k := range store {
+		evictNumber--
+		Del(k)
+		if evictNumber <= 0 {
+			return
+		}
 	}
 }
 func evictMethod() {
 	switch config.EvictionStrategy {
 	case "simple-first":
 		evictFirst()
+	case "allkeys-random":
+		evictRandom()
 	}
 
 }
