@@ -10,39 +10,28 @@ import (
 //val -->
 // can we make this into a singleton instance
 
-var store map[string]*Value
-
-/*
-Without a separate dictionary, Redis would need to store expiration metadata alongside every key in the main keyspace,
-increasing memory overhead for non-expiring keys and complicating lookup
-
-For active deletion (background expiration task), Redis samples keys from the expires dictionary directly,
-ensuring it only checks keys that have expiration times.This avoids wasting cycles on non-expiring key
-*/
-type Value struct {
-	value  interface{}
-	expiry int64
-}
+var store map[string]*RedisObject
 
 func init() {
-	store = make(map[string]*Value)
+	store = make(map[string]*RedisObject)
 }
 
-func NewValue(value interface{}, expiry int64) *Value {
-	val := &Value{
-		value:  value,
-		expiry: expiry,
+func NewValue(value interface{}, expiry int64, oType uint8, oEnc uint8) *RedisObject {
+	val := &RedisObject{
+		TypeEncoding: oType | oEnc,
+		Value:        value,
+		expiry:       expiry,
 	}
 	return val
 }
-func Put(key string, val *Value) {
+func Put(key string, val *RedisObject) {
 	if len(store) > config.KeysLimit {
 		evictMethod()
 	}
 	store[key] = val
 }
 
-func Get(key string) *Value {
+func Get(key string) *RedisObject {
 	log.Println("I am in GET if starting")
 	val := store[key]
 	if val == nil {

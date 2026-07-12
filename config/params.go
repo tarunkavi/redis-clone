@@ -5,3 +5,5 @@ var Host string
 var Port int
 var KeysLimit int = 5
 var EvictionStrategy string = "simple-first"
+
+var AOFFile string = "db-master.aof"

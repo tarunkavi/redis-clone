@@ -30,7 +30,9 @@ func evalSET(cmd *Cmd) ([]byte, error) {
 		return nil, errors.New("ERR Wrong number of arguments for SET command")
 	}
 	key, value := cmd.Args[0], cmd.Args[1]
-	val := NewValue(value, -1)
+	enc := getValueEncoding(value)
+	//when type keeps changing then can include that logic insidde get ValueEncofing
+	val := NewValue(value, -1, OBJ_TYPE_STRING, enc)
 	for i := 2; i < len(cmd.Args); i++ {
 		switch cmd.Args[i] {
 		case "EX", "ex":
@@ -49,7 +51,7 @@ func evalSET(cmd *Cmd) ([]byte, error) {
 		}
 	}
 	Put(key, val)
-	return Encode("OK", true), nil
+	return RESP_OK, nil
 }
 func evalGET(cmd *Cmd) ([]byte, error) {
 	if len(cmd.Args) < 1 {
@@ -59,9 +61,9 @@ func evalGET(cmd *Cmd) ([]byte, error) {
 	val := Get(key)
 	log.Println("Tarun", val)
 	if val == nil {
-		return RESPNIL, nil
+		return RESP_NIL, nil
 	}
-	return Encode(val.value, false), nil
+	return Encode(val.Value, false), nil
 }
 func evalTTL(cmd *Cmd) ([]byte, error) {
 	if len(cmd.Args) < 1 {
@@ -75,7 +77,7 @@ func evalTTL(cmd *Cmd) ([]byte, error) {
 		return Encode(int64(-2), false), nil
 	}
 	if val.expiry == -1 {
-		return Encode(val.value, false), nil
+		return Encode(val.Value, false), nil
 	}
 	TTL := val.expiry - time.Now().Unix()
 	if TTL < 0 {
@@ -113,6 +115,35 @@ func evalEXPIRE(cmd *Cmd) ([]byte, error) {
 	return Encode(int64(1), false), nil
 }
 
+func evalBGREWRITEAOF() ([]byte, error) {
+	DumpAll()
+	return RESP_OK, nil
+}
+
+func evalINCR(cmd *Cmd) ([]byte, error) {
+	key := cmd.Args[0]
+
+	val := Get(key)
+	if val == nil {
+		val = NewValue("0", -1, OBJ_TYPE_STRING, OBJ_ENCODING_INT)
+		Put(key, val)
+	}
+	if err := assertType(val.TypeEncoding, OBJ_TYPE_STRING); err != nil {
+		return nil, err
+	}
+	if err := assertEncoding(val.TypeEncoding, OBJ_ENCODING_INT); err != nil {
+		return nil, err
+	}
+	valInt, err := strconv.ParseInt(val.Value.(string), 10, 64)
+	if err != nil {
+
+	}
+	valInt = valInt + 1
+	val.Value = strconv.Itoa(int(valInt))
+	Put(key, val)
+	return Encode(valInt, false), nil
+}
+
 func Eval(cmd *Cmd) ([]byte, error) {
 	switch strings.ToUpper(cmd.Cmd) {
 	case "PING":
@@ -121,12 +152,16 @@ func Eval(cmd *Cmd) ([]byte, error) {
 		return evalGET(cmd)
 	case "SET":
 		return evalSET(cmd)
+	case "INCR":
+		return evalINCR(cmd)
 	case "TTL":
 		return evalTTL(cmd)
 	case "DEL":
 		return evalDEL(cmd)
 	case "EXPIRE":
 		return evalEXPIRE(cmd)
+	case "BGREWRITEAOF":
+		return evalBGREWRITEAOF()
 	}
 	return Encode("#{cmd.Cmd} Unknown", true), nil
 }

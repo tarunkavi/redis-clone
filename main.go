@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"redis-clone/config"
+	"redis-clone/core"
 	"redis-clone/server"
 )
 
@@ -21,6 +22,7 @@ func setupFlags() {
 func main() {
 	setupFlags()
 	fmt.Println("Starting db....")
+	core.InitAof(config.AOFFile)
 	err := server.RunAsyncTcpServer()
 	fmt.Println(err)
 	// out, _ := core.Decode([]byte("*-1\r\n"))

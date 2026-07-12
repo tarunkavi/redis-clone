@@ -1,12 +1,14 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
 )
 
-var RESPNIL = []byte("$-1\r\n")
+var RESP_NIL = []byte("$-1\r\n")
+var RESP_OK = Encode("OK", true)
 
 func DecodeAll(data []byte) (interface{}, int, error) {
 	if len(data) == 0 {
@@ -133,6 +135,10 @@ func EncodeError(data error) []byte {
 	return []byte(fmt.Sprintf("-%s\r\n", data))
 }
 
+func encodeString(v string) []byte {
+	return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(v), v))
+}
+
 // After Eval
 func Encode(data interface{}, isSimple bool) []byte {
 	switch v := data.(type) {
@@ -140,10 +146,17 @@ func Encode(data interface{}, isSimple bool) []byte {
 		if isSimple {
 			return []byte(fmt.Sprintf("+%s\r\n", v))
 		}
-		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(v), v))
+		return encodeString(v)
 	case int64:
 		return []byte(fmt.Sprintf(":%d\r\n", v))
 
+	case []string: //ArrayString Encoding.
+		var b []byte
+		buff := bytes.NewBuffer(b)
+		for _, b := range v {
+			buff.Write(encodeString(b))
+		}
+		return []byte(fmt.Sprintf("*%d\r\n%s", len(v), buff.Bytes()))
 	}
 
 	return []byte{}

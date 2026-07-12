@@ -38,7 +38,11 @@ func Listen(ip string, port int) (*Socket, error) {
 
 	s.socketFd = listenFd
 	sockAddr := &syscall.SockaddrInet4{Port: port}
+	if err := syscall.SetsockoptInt(s.socketFd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+		return nil, fmt.Errorf("error setting SO_REUSEADDR: %v", err)
+	}
 	copy(sockAddr.Addr[:], net.ParseIP(ip))
+
 	err = syscall.Bind(s.socketFd, sockAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error binding address with socket %v", err)
@@ -66,6 +70,7 @@ func eventLoop(socket *Socket, kfd int) {
 	events := make([]syscall.Kevent_t, 2500)
 	for {
 		if time.Now().After(lastCronExecTime.Add(cronFrequency)) {
+			//TODO: Expiry is only triggering on client activity fix that
 			core.DeleteExpiredKeys()
 			lastCronExecTime = time.Now()
 		}
