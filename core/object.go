@@ -10,7 +10,7 @@ TYPE ENCODING
 type RedisObject struct {
 	TypeEncoding uint8
 	Value        interface{}
-	expiry       int64
+	LastAccessAt uint32
 }
 
 // The below may be uint8 but they should be treated as 4 bits because type and encoding seperately are 4 bits

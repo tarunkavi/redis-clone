@@ -19,11 +19,13 @@ func expireSample() float32 {
 	var limit int = 20
 	var expiredCount int = 0
 	for key, val := range store {
-		if val.expiry != -1 {
+		expiry, ok := expires[val]
+		if ok {
 			limit--
-			if val.expiry <= time.Now().Unix() {
+			if expiry <= time.Now().Unix() {
 				// log.Println("Logging for satisfaction")
 				delete(store, key)
+				delete(expires, val)
 				expiredCount++
 			}
 		}
@@ -44,4 +46,8 @@ func DeleteExpiredKeys() {
 		}
 	}
 	log.Println("deleted Expired keys len after deletion", len(store))
+}
+
+func hasExpired(expiry int64) bool {
+	return expiry <= time.Now().Unix()
 }

@@ -31,25 +31,26 @@ func evalSET(cmd *Cmd) ([]byte, error) {
 	}
 	key, value := cmd.Args[0], cmd.Args[1]
 	oType, enc := getTypeEncoding(value)
+	var expiry int64 = -1
 	//when type keeps changing then can include that logic insidde getTypeEncoding
-	val := NewValue(value, -1, oType, enc)
 	for i := 2; i < len(cmd.Args); i++ {
 		switch cmd.Args[i] {
 		case "EX", "ex":
 			if i+1 >= len(cmd.Args) {
 				return nil, errors.New("ERR syntax error")
 			}
-			expiry, err := strconv.ParseInt(cmd.Args[i+1], 10, 64)
+			seconds, err := strconv.ParseInt(cmd.Args[i+1], 10, 64)
 			if err != nil {
 				return nil, errors.New("ERR value is not an integer or out of range")
 			}
-			val.expiry = time.Now().Unix() + expiry
+			expiry = time.Now().Unix() + seconds
 
 			i++
 		default:
 			return nil, errors.New("(error) ERR syntax error")
 		}
 	}
+	val := NewValue(value, expiry, oType, enc)
 	Put(key, val)
 	return RESP_OK, nil
 }
@@ -76,10 +77,11 @@ func evalTTL(cmd *Cmd) ([]byte, error) {
 	if val == nil {
 		return Encode(int64(-2), false), nil
 	}
-	if val.expiry == -1 {
-		return Encode(val.Value, false), nil
+	expiry, ok := GetExpiry(val)
+	if !ok {
+		return Encode(int64(-1), false), nil
 	}
-	TTL := val.expiry - time.Now().Unix()
+	TTL := expiry - time.Now().Unix()
 	if TTL < 0 {
 		return Encode(int64(-2), false), nil
 	}
@@ -110,8 +112,7 @@ func evalEXPIRE(cmd *Cmd) ([]byte, error) {
 	if val == nil {
 		return Encode(int64(0), false), nil
 	}
-	//expiry shoul be updated inside the PUT
-	val.expiry = int64(expiry + time.Now().Unix())
+	SetExpiry(val, expiry+time.Now().Unix())
 	return Encode(int64(1), false), nil
 }
 

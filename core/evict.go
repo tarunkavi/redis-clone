@@ -21,12 +21,19 @@ func evictRandom() {
 		}
 	}
 }
+
+func evictLRU() {
+
+}
+
 func evictMethod() {
 	switch config.EvictionStrategy {
 	case "simple-first":
 		evictFirst()
 	case "allkeys-random":
 		evictRandom()
+	case "lru":
+		evictLRU()
 	}
 
 }
